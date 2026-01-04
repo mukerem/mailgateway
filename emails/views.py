@@ -11,7 +11,6 @@ from django.views.decorators.csrf import csrf_exempt
 
 @csrf_exempt
 def send_email_api(request):
-    print(9999)
     # Only allow POST
     if request.method != "POST":
         return JsonResponse({"detail": "Method not allowed"}, status=405)

@@ -23,7 +23,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-    "emails",  # our app
+    "emails",
+    "microservice",
 ]
 
 MIDDLEWARE = [
@@ -68,3 +69,10 @@ DEFAULT_FROM_EMAIL = "no-reply@nationalidconvertor.com"
 
 # Shared secret for the gateway API
 EMAIL_API_KEY = os.getenv("EMAIL_API_KEY")  # set in .env on cPanel
+TELEBIRR_RECEIPT_URL = "https://transactioninfo.ethiotelecom.et/receipt/{reference}"
+
+# Secure API access
+MICROSERVICE_SECRET_KEY = os.getenv("MICROSERVICE_SECRET_KEY")
+
+TIME_ZONE = "Africa/Addis_Ababa"
+USE_TZ = True
