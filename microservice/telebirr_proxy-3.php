@@ -12,11 +12,6 @@
 //      3) both 0/O and 1/I
 // - find_receipt_with_variants(): tries raw ref first, then candidates
 // - returns JSON: { ok, exists, data: { reference_used, ... } }
-//
-// NOTE: if the upstream SSL certificate is broken, you can set
-//   TELEBIRR_INSECURE=1
-// in the environment to temporarily disable SSL verification.
-// This is insecure and should only be used as a workaround.
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -48,33 +43,19 @@ define('TELEBIRR_URL_TEMPLATE', 'https://transactioninfo.ethiotelecom.et/receipt
 function fetch_receipt_raw($referenceNumber)
 {
     $url         = sprintf(TELEBIRR_URL_TEMPLATE, urlencode($referenceNumber));
-    $maxAttempts = 2;
-
-    // Read flag from env: TELEBIRR_INSECURE=1  => disable SSL checks (INSECURE)
-    $insecure = getenv('TELEBIRR_INSECURE') === '1';
+    $maxAttempts = 5;
 
     for ($attempt = 0; $attempt < $maxAttempts; $attempt++) {
         $ch = curl_init();
-
-        $options = [
+        curl_setopt_array($ch, [
             CURLOPT_URL            => $url,
             CURLOPT_RETURNTRANSFER => true,
             CURLOPT_FOLLOWLOCATION => true,
-            CURLOPT_TIMEOUT        => 30,
+            CURLOPT_TIMEOUT        => 15,
+            CURLOPT_SSL_VERIFYPEER => true,
+            CURLOPT_SSL_VERIFYHOST => 2,
             CURLOPT_USERAGENT      => 'TelebirrProxy/1.0',
-        ];
-
-        if ($insecure) {
-            // ❌ INSECURE MODE – only as a temporary workaround
-            $options[CURLOPT_SSL_VERIFYPEER] = false;
-            $options[CURLOPT_SSL_VERIFYHOST] = 0;
-        } else {
-            // ✅ Normal secure mode
-            $options[CURLOPT_SSL_VERIFYPEER] = true;
-            $options[CURLOPT_SSL_VERIFYHOST] = 2;
-        }
-
-        curl_setopt_array($ch, $options);
+        ]);
 
         $html       = curl_exec($ch);
         $statusCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
@@ -84,8 +65,7 @@ function fetch_receipt_raw($referenceNumber)
         curl_close($ch);
 
         if ($errNo !== 0) {
-            // network / SSL error – optionally log for debugging
-            // error_log("Telebirr curl error ($referenceNumber): $errNo - $err");
+            // network error
             return null;
         }
 
@@ -187,7 +167,7 @@ function fetch_receipt_raw($referenceNumber)
  *  - Second: 1/I-only combinations
  *  - Third: both 0/O and 1/I combinations
  */
-function generate_reference_candidates($raw, $maxVariants = 20)
+function generate_reference_candidates($raw, $maxVariants = 512)
 {
     $clean = strtoupper(str_replace([' ', '-'], '', $raw));
     $chars = preg_split('//u', $clean, -1, PREG_SPLIT_NO_EMPTY);
